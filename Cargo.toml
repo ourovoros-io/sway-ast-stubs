@@ -1,0 +1,16 @@
+[package]
+name = "sway-static-ast"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+
+
+[build-dependencies]
+reqwest = { version = "0.12.4", features = ["blocking", "json"] }
+sway-ast = "0.56.0"
+sway-parse = "0.56.0"
+sway-error = "0.56.0"
+quote = "1.0.36"
+proc-macro2 = "1.0.82"
