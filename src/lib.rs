@@ -1,8 +1,4 @@
-use std::{
-    error::Error,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::str::FromStr;
 
 // NOTE: We use the `include!` macro because the `AstResolver` structure is used by both the build script and the crate itself.
 include!("resolver.rs");

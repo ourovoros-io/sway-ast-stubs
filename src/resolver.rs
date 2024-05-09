@@ -16,10 +16,10 @@ pub struct AstResolver {
 }
 
 impl AstResolver {
-    pub fn new<P1: AsRef<Path>, P2: AsRef<Path>>(
+    pub fn new<P1: AsRef<std::path::Path>, P2: AsRef<std::path::Path>>(
         core_path: P1,
         std_path: P2,
-    ) -> Result<Self, Box<dyn Error>> {
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         Ok(Self {
             libraries: vec![
                 AstLibrary {
@@ -35,7 +35,7 @@ impl AstResolver {
     }
 }
 
-fn parse_ast_modules<P: AsRef<Path>>(path: P) -> Result<Vec<AstModule>, Box<dyn Error>> {
+fn parse_ast_modules<P: AsRef<std::path::Path>>(path: P) -> Result<Vec<AstModule>, Box<dyn std::error::Error>> {
     let mut result = vec![];
 
     let path = path.as_ref().canonicalize()?;
@@ -63,7 +63,7 @@ fn parse_ast_modules<P: AsRef<Path>>(path: P) -> Result<Vec<AstModule>, Box<dyn 
         let handler = sway_error::handler::Handler::default();
         let ast = sway_parse::parse_file(&handler, file.clone(), None).unwrap();
 
-        let module_name = PathBuf::from(
+        let module_name = std::path::PathBuf::from(
             file_path
                 .to_string_lossy()
                 .trim_start_matches(&path_string)

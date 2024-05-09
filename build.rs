@@ -1,13 +1,5 @@
-use num_bigint::BigUint;
-use num_traits::Num;
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::{
-    error::Error,
-    path::{self, Path, PathBuf},
-    process::Command, str::FromStr,
-};
-use sway_ast::{attribute::AttributeHashKind, keywords::Keyword};
 
 // NOTE: We use the `include!` macro because the `AstResolver` structure is used by both the build script and the crate itself.
 include!("src/resolver.rs");
@@ -15,8 +7,8 @@ include!("src/resolver.rs");
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo::rerun-if-changed=build.rs");
 
-    if !Path::new("./sway/").exists() {
-        Command::new("git")
+    if !std::path::Path::new("./sway/").exists() {
+        std::process::Command::new("git")
             .args(&["clone", "https://github.com/FuelLabs/sway.git"])
             .spawn()?
             .wait_with_output()?;
@@ -28,10 +20,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 name: "core".into(),
                 modules: parse_ast_modules("./sway/sway-lib-core/src")?,
             },
-            // AstLibrary {
-            //     name: "std".into(),
-            //     modules: parse_ast_modules("./sway/sway-lib-std/src")?,
-            // },
+            AstLibrary {
+                name: "std".into(),
+                modules: parse_ast_modules("./sway/sway-lib-std/src")?,
+            },
         ],
     };
 
@@ -46,9 +38,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             fn default() -> Self {
                 use sway_ast::keywords::{Keyword, Token};
 
-                Self {
+                // HACK: Ensure we have at least 64MB stack space available
+                stacker::grow(64 * 1024 * 1024, || Self {
                     libraries: vec![#(#libraries),*],
-                }
+                })
             }
         }
     };
@@ -1632,10 +1625,10 @@ fn generate_attribute_decl_code(
     })
 }
 
-fn generate_attribute_hash_kind_code(hash_kind: &AttributeHashKind) -> TokenStream {
+fn generate_attribute_hash_kind_code(hash_kind: &sway_ast::attribute::AttributeHashKind) -> TokenStream {
     let (hash_kind, token_kind) = match hash_kind {
-        AttributeHashKind::Inner(_) => (quote!(Inner), quote!(HashBangToken)),
-        AttributeHashKind::Outer(_) => (quote!(Outer), quote!(HashToken)),
+        sway_ast::attribute::AttributeHashKind::Inner(_) => (quote!(Inner), quote!(HashBangToken)),
+        sway_ast::attribute::AttributeHashKind::Outer(_) => (quote!(Outer), quote!(HashToken)),
     };
 
     quote!(sway_ast::attribute::AttributeHashKind::#hash_kind(
@@ -1778,6 +1771,22 @@ fn generate_expr_code(expr: &sway_ast::Expr) -> TokenStream {
         sway_ast::Expr::Literal(literal) => {
             let literal = generate_literal_code(literal);
             quote!(sway_ast::Expr::Literal(#literal))
+        }
+
+        sway_ast::Expr::Path(path_expr) => {
+            let path_expr = generate_path_expr_code(path_expr);
+            quote!(sway_ast::Expr::Path(#path_expr))
+        }
+
+        sway_ast::Expr::Shl { lhs, shl_token: _, rhs } => {
+            let lhs = generate_expr_code(lhs.as_ref());
+            let rhs = generate_expr_code(rhs.as_ref());
+
+            quote!(sway_ast::Expr::Shl {
+                lhs: Box::new(#lhs),
+                shl_token: sway_ast::keywords::ShlToken::new(sway_types::Span::dummy()),
+                rhs: Box::new(#rhs),
+            })
         }
 
         _ => todo!("{expr:#?}")
