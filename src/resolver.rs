@@ -16,7 +16,7 @@ pub struct AstResolver {
 }
 
 impl AstResolver {
-    pub fn new<P1: AsRef<std::path::Path>, P2: AsRef<std::path::Path>>(
+    pub fn new<P1: Clone + AsRef<std::path::Path>, P2: Clone + AsRef<std::path::Path>>(
         core_path: P1,
         std_path: P2,
     ) -> Result<Self, Box<dyn std::error::Error>> {
@@ -24,28 +24,30 @@ impl AstResolver {
             libraries: vec![
                 AstLibrary {
                     name: "core".into(),
-                    modules: parse_ast_modules(core_path)?,
+                    modules: parse_ast_modules(core_path.clone(), core_path)?,
                 },
                 AstLibrary {
                     name: "std".into(),
-                    modules: parse_ast_modules(std_path)?,
+                    modules: parse_ast_modules(std_path.clone(), std_path)?,
                 },
             ],
         })
     }
 }
 
-fn parse_ast_modules<P: AsRef<std::path::Path>>(path: P) -> Result<Vec<AstModule>, Box<dyn std::error::Error>> {
+fn parse_ast_modules<P1: Clone + AsRef<std::path::Path>, P2: AsRef<std::path::Path>>(root_path: P1, path: P2) -> Result<Vec<AstModule>, Box<dyn std::error::Error>> {
     let mut result = vec![];
 
+    let root_path = root_path.as_ref().canonicalize()?;
+    let root_path_string = root_path.to_string_lossy().to_string();
+
     let path = path.as_ref().canonicalize()?;
-    let path_string = path.to_string_lossy().to_string();
 
     for file in std::fs::read_dir(path).unwrap() {
         let file_path = file?.path();
 
         if file_path.is_dir() {
-            result.extend(parse_ast_modules(file_path)?);
+            result.extend(parse_ast_modules(root_path.clone(), file_path)?);
             continue;
         }
 
@@ -66,7 +68,7 @@ fn parse_ast_modules<P: AsRef<std::path::Path>>(path: P) -> Result<Vec<AstModule
         let module_name = std::path::PathBuf::from(
             file_path
                 .to_string_lossy()
-                .trim_start_matches(&path_string)
+                .trim_start_matches(&root_path_string)
                 .strip_suffix(".sw")
                 .unwrap(),
         )

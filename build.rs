@@ -18,11 +18,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         libraries: vec![
             AstLibrary {
                 name: "core".into(),
-                modules: parse_ast_modules("./sway/sway-lib-core/src")?,
+                modules: parse_ast_modules("./sway/sway-lib-core/src", "./sway/sway-lib-core/src")?,
             },
             AstLibrary {
                 name: "std".into(),
-                modules: parse_ast_modules("./sway/sway-lib-std/src")?,
+                modules: parse_ast_modules("./sway/sway-lib-std/src", "./sway/sway-lib-std/src")?,
             },
         ],
     };
