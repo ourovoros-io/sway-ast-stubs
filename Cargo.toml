@@ -4,13 +4,20 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-
-
+num-bigint = "0.4.3"
+num-traits = "0.2.16"
+sway-ast = "0.56.0"
+sway-parse = "0.56.0"
+sway-error = "0.56.0"
+sway-types = "0.56.0"
 
 [build-dependencies]
+num-bigint = "0.4.3"
+num-traits = "0.2.16"
+proc-macro2 = "1.0.82"
+quote = "1.0.36"
 reqwest = { version = "0.12.4", features = ["blocking", "json"] }
 sway-ast = "0.56.0"
 sway-parse = "0.56.0"
 sway-error = "0.56.0"
-quote = "1.0.36"
-proc-macro2 = "1.0.82"
+sway-types = "0.56.0"

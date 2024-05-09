@@ -1678,12 +1678,15 @@ dependencies = [
 name = "sway-static-ast"
 version = "0.1.0"
 dependencies = [
+ "num-bigint",
+ "num-traits",
  "proc-macro2",
  "quote",
  "reqwest",
  "sway-ast",
  "sway-error",
  "sway-parse",
+ "sway-types",
 ]
 
 [[package]]
