@@ -1,5 +1,5 @@
 [package]
-name = "sway-static-ast"
+name = "sway-ast-stubs"
 version = "0.1.0"
 edition = "2021"
 
