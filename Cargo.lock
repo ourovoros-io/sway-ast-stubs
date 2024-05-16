@@ -1006,6 +1006,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "sway-ast-stubs"
+version = "0.1.0"
+dependencies = [
+ "num-bigint",
+ "num-traits",
+ "proc-macro2",
+ "quote",
+ "stacker",
+ "sway-ast",
+ "sway-error",
+ "sway-parse",
+ "sway-types",
+]
+
+[[package]]
 name = "sway-error"
 version = "0.56.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1034,21 +1049,6 @@ dependencies = [
  "thiserror",
  "unicode-bidi",
  "unicode-xid",
-]
-
-[[package]]
-name = "sway-static-ast"
-version = "0.1.0"
-dependencies = [
- "num-bigint",
- "num-traits",
- "proc-macro2",
- "quote",
- "stacker",
- "sway-ast",
- "sway-error",
- "sway-parse",
- "sway-types",
 ]
 
 [[package]]
