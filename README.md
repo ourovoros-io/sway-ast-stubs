@@ -1,1 +1,1 @@
-# Sway Static Ast
+# Sway Ast Stubs
