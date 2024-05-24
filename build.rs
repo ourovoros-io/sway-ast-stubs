@@ -1820,7 +1820,7 @@ fn generate_expr_code(expr: &sway_ast::Expr) -> TokenStream {
                         value_separator_pairs: vec![#(#value_separator_pairs),*],
                         final_value_opt: #final_value_opt,
                     },
-                    span: sway_ast::Span::dummy(),
+                    span: sway_types::Span::dummy(),
                 },
             })          
         }
