@@ -1793,8 +1793,8 @@ fn generate_expr_code(expr: &sway_ast::Expr) -> TokenStream {
             let func = generate_expr_code(func.as_ref());
             let mut value_separator_pairs = vec![];
 
-            for value_separator_pair in imports.inner.value_separator_pairs.iter() {
-                let tree = generate_use_tree_code(&value_separator_pair.0);
+            for value_separator_pair in args.inner.value_separator_pairs.iter() {
+                let tree = generate_expr_code(&value_separator_pair.0);
 
                 value_separator_pairs.push(quote!(
                     (
@@ -1804,9 +1804,9 @@ fn generate_expr_code(expr: &sway_ast::Expr) -> TokenStream {
                 ));
             }
 
-            let final_value_opt = match imports.inner.final_value_opt.as_ref() {
+            let final_value_opt = match args.inner.final_value_opt.as_ref() {
                 Some(tree) => {
-                    let tree = generate_use_tree_code(tree);
+                    let tree = generate_expr_code(tree);
                     quote!(Some(Box::new(#tree)))
                 }
 
