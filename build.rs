@@ -1789,6 +1789,42 @@ fn generate_expr_code(expr: &sway_ast::Expr) -> TokenStream {
             })
         }
 
+        sway_ast::Expr::FuncApp{ func, args } => {
+            let func = generate_expr_code(func.as_ref());
+            let mut value_separator_pairs = vec![];
+
+            for value_separator_pair in imports.inner.value_separator_pairs.iter() {
+                let tree = generate_use_tree_code(&value_separator_pair.0);
+
+                value_separator_pairs.push(quote!(
+                    (
+                        #tree,
+                        sway_ast::keywords::CommaToken::new(sway_types::Span::dummy())
+                    )
+                ));
+            }
+
+            let final_value_opt = match imports.inner.final_value_opt.as_ref() {
+                Some(tree) => {
+                    let tree = generate_use_tree_code(tree);
+                    quote!(Some(Box::new(#tree)))
+                }
+
+                None => quote!(None),
+            };
+
+            quote!(sway_ast::Expr::FuncApp {
+                func: Box::new(#func),
+                args: sway_ast::Parens {
+                    inner: sway_ast::Punctuated {
+                        value_separator_pairs: vec![#(#value_separator_pairs),*],
+                        final_value_opt: #final_value_opt,
+                    },
+                    span: sway_ast::Span::dummy(),
+                },
+            })          
+        }
+
         _ => todo!("{expr:#?}")
     }
 }
