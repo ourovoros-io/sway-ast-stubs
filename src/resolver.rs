@@ -34,6 +34,14 @@ impl AstResolver {
         })
     }
 
+    #[inline]
+    pub fn resolve_module(&self, path_expr: &sway_ast::PathExpr) -> Option<&AstModule> {
+        let module_name = path_expr.suffix.iter().map(|(_, x)| x.name.as_str()).collect::<Vec<_>>().join("::");
+        let library = self.libraries.iter().find(|x| x.name == path_expr.prefix.name.as_str())?;
+        library.modules.iter().find(|x| x.name == module_name)
+    }
+
+    #[inline]
     pub fn resolve_ty(&self, ty: &sway_ast::Ty) -> Option<&sway_ast::ItemKind> {
         match ty {
             sway_ast::Ty::Path(path_type) => self.resolve_path_type(path_type),
