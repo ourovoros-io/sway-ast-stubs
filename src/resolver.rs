@@ -1,16 +1,16 @@
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct AstModule {
     pub name: String,
     pub inner: sway_ast::Module,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct AstLibrary {
     pub name: String,
     pub modules: Vec<AstModule>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct AstResolver {
     pub libraries: Vec<AstLibrary>,
 }
@@ -45,6 +45,14 @@ impl AstResolver {
     pub fn resolve_ty(&self, ty: &sway_ast::Ty) -> Option<&sway_ast::ItemKind> {
         match ty {
             sway_ast::Ty::Path(path_type) => self.resolve_path_type(path_type),
+
+            sway_ast::Ty::Tuple(tuple) => {
+                match &tuple.inner {
+                    sway_ast::ty::TyTupleDescriptor::Nil => None,
+                    sway_ast::ty::TyTupleDescriptor::Cons { .. } => todo!(),
+                }
+            }
+
             _ => todo!("{ty:#?}"),
         }
     }
