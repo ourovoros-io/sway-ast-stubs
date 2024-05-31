@@ -20,15 +20,74 @@ impl AstResolver {
         core_path: P1,
         std_path: P2,
     ) -> Result<Self, Box<dyn std::error::Error>> {
+        use sway_ast::keywords::{Keyword, Token};
+        
+        let core_preludes = vec![
+            sway_ast::ItemKind::Use(sway_ast::ItemUse {
+                visibility: None,
+                use_token: sway_ast::keywords::UseToken::new(sway_types::Span::dummy()),
+                root_import: None,
+                tree: sway_ast::UseTree::Path {
+                    prefix: sway_types::BaseIdent::new_no_span("core".into()),
+                    double_colon_token: sway_ast::DoubleColonToken::default(),
+                    suffix: Box::new(sway_ast::UseTree::Path {
+                        prefix: sway_types::BaseIdent::new_no_span("prelude".into()),
+                        double_colon_token: sway_ast::DoubleColonToken::default(),
+                        suffix: Box::new(sway_ast::UseTree::Glob {
+                            star_token: sway_ast::keywords::StarToken::new(sway_types::Span::dummy()),
+                        }),
+                    }),
+                },
+                semicolon_token: sway_ast::keywords::SemicolonToken::new(sway_types::Span::dummy()),
+            }),
+        ];
+    
+        let std_preludes = vec![
+            sway_ast::ItemKind::Use(sway_ast::ItemUse {
+                visibility: None,
+                use_token: sway_ast::keywords::UseToken::new(sway_types::Span::dummy()),
+                root_import: None,
+                tree: sway_ast::UseTree::Path {
+                    prefix: sway_types::BaseIdent::new_no_span("core".into()),
+                    double_colon_token: sway_ast::DoubleColonToken::default(),
+                    suffix: Box::new(sway_ast::UseTree::Path {
+                        prefix: sway_types::BaseIdent::new_no_span("prelude".into()),
+                        double_colon_token: sway_ast::DoubleColonToken::default(),
+                        suffix: Box::new(sway_ast::UseTree::Glob {
+                            star_token: sway_ast::keywords::StarToken::new(sway_types::Span::dummy()),
+                        }),
+                    }),
+                },
+                semicolon_token: sway_ast::keywords::SemicolonToken::new(sway_types::Span::dummy()),
+            }),
+            sway_ast::ItemKind::Use(sway_ast::ItemUse {
+                visibility: None,
+                use_token: sway_ast::keywords::UseToken::new(sway_types::Span::dummy()),
+                root_import: None,
+                tree: sway_ast::UseTree::Path {
+                    prefix: sway_types::BaseIdent::new_no_span("std".into()),
+                    double_colon_token: sway_ast::DoubleColonToken::default(),
+                    suffix: Box::new(sway_ast::UseTree::Path {
+                        prefix: sway_types::BaseIdent::new_no_span("prelude".into()),
+                        double_colon_token: sway_ast::DoubleColonToken::default(),
+                        suffix: Box::new(sway_ast::UseTree::Glob {
+                            star_token: sway_ast::keywords::StarToken::new(sway_types::Span::dummy()),
+                        }),
+                    }),
+                },
+                semicolon_token: sway_ast::keywords::SemicolonToken::new(sway_types::Span::dummy()),
+            }),
+        ];
+    
         Ok(Self {
             libraries: vec![
                 AstLibrary {
                     name: "core".into(),
-                    modules: parse_ast_modules(core_path.clone(), core_path)?,
+                    modules: parse_ast_modules(core_path.clone(), core_path, core_preludes.as_slice())?,
                 },
                 AstLibrary {
                     name: "std".into(),
-                    modules: parse_ast_modules(std_path.clone(), std_path)?,
+                    modules: parse_ast_modules(std_path.clone(), std_path, std_preludes.as_slice())?,
                 },
             ],
         })
@@ -120,7 +179,7 @@ impl AstResolver {
     }
 }
 
-fn parse_ast_modules<P1: Clone + AsRef<std::path::Path>, P2: AsRef<std::path::Path>>(root_path: P1, path: P2) -> Result<Vec<AstModule>, Box<dyn std::error::Error>> {
+fn parse_ast_modules<P1: Clone + AsRef<std::path::Path>, P2: AsRef<std::path::Path>>(root_path: P1, path: P2, preludes: &[sway_ast::ItemKind]) -> Result<Vec<AstModule>, Box<dyn std::error::Error>> {
     let mut result = vec![];
 
     let root_path = root_path.as_ref().canonicalize()?;
@@ -132,7 +191,7 @@ fn parse_ast_modules<P1: Clone + AsRef<std::path::Path>, P2: AsRef<std::path::Pa
         let file_path = file?.path();
 
         if file_path.is_dir() {
-            result.extend(parse_ast_modules(root_path.clone(), file_path)?);
+            result.extend(parse_ast_modules(root_path.clone(), file_path, preludes)?);
             continue;
         }
 
@@ -148,7 +207,66 @@ fn parse_ast_modules<P1: Clone + AsRef<std::path::Path>, P2: AsRef<std::path::Pa
 
         let file = std::sync::Arc::<str>::from(std::fs::read_to_string(file_path.clone())?);
         let handler = sway_error::handler::Handler::default();
-        let ast = sway_parse::parse_file(&handler, file.clone(), None).unwrap();
+        let mut module = sway_parse::parse_file(&handler, file.clone(), None).unwrap();
+
+        for prelude in preludes {
+            module.value.items.push(sway_ast::attribute::Annotated {
+                attribute_list: vec![],
+                value: prelude.clone(),
+            });
+        }
+
+        for item in module.value.items.iter_mut() {
+            match &mut item.value {
+                sway_ast::ItemKind::Submodule(_) => {}
+                sway_ast::ItemKind::Use(_) => {}
+                sway_ast::ItemKind::Struct(_) => {}
+                sway_ast::ItemKind::Enum(_) => {}
+
+                sway_ast::ItemKind::Fn(item_fn) => {
+                    item_fn.body.inner.statements.clear();
+                    item_fn.body.inner.final_expr_opt = None;
+                }
+                
+                sway_ast::ItemKind::Trait(item_trait) => {
+                    if let Some(trait_defs) = item_trait.trait_defs_opt.as_mut() {
+                        for item_fn in trait_defs.inner.iter_mut() {
+                            item_fn.value.body.inner.statements.clear();
+                            item_fn.value.body.inner.final_expr_opt = None;
+                        }
+                    }
+                }
+
+                sway_ast::ItemKind::Impl(item_impl) => {
+                    for impl_item in item_impl.contents.inner.iter_mut() {
+                        match &mut impl_item.value {
+                            sway_ast::ItemImplItem::Fn(item_fn) => {
+                                item_fn.body.inner.statements.clear();
+                                item_fn.body.inner.final_expr_opt = None;
+                            }
+
+                            sway_ast::ItemImplItem::Const(_) => {}
+                            sway_ast::ItemImplItem::Type(_) => {}
+                        }
+                    }
+                }
+
+                sway_ast::ItemKind::Abi(item_abi) => {
+                    if let Some(abi_defs) = item_abi.abi_defs_opt.as_mut() {
+                        for item_fn in abi_defs.inner.iter_mut() {
+                            item_fn.value.body.inner.statements.clear();
+                            item_fn.value.body.inner.final_expr_opt = None;
+                        }
+                    }
+                }
+
+                sway_ast::ItemKind::Const(_) => {}
+                sway_ast::ItemKind::Storage(_) => {}
+                sway_ast::ItemKind::Configurable(_) => {}
+                sway_ast::ItemKind::TypeAlias(_) => {}
+                sway_ast::ItemKind::Error(_, _) => {}
+            }
+        }
 
         let module_name = std::path::PathBuf::from(
             file_path
@@ -170,7 +288,7 @@ fn parse_ast_modules<P1: Clone + AsRef<std::path::Path>, P2: AsRef<std::path::Pa
 
         result.push(AstModule {
             name: module_name,
-            inner: ast.value,
+            inner: module.value,
         });
     }
 

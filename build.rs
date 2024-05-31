@@ -1,5 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
+use sway_ast::keywords::{Keyword, Token};
 
 // NOTE: We use the `include!` macro because the `AstResolver` structure is used by both the build script and the crate itself.
 include!("src/resolver.rs");
@@ -14,15 +15,72 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .wait_with_output()?;
     }
 
+    let core_preludes = vec![
+        sway_ast::ItemKind::Use(sway_ast::ItemUse {
+            visibility: None,
+            use_token: sway_ast::keywords::UseToken::new(sway_types::Span::dummy()),
+            root_import: None,
+            tree: sway_ast::UseTree::Path {
+                prefix: sway_types::BaseIdent::new_no_span("core".into()),
+                double_colon_token: sway_ast::DoubleColonToken::default(),
+                suffix: Box::new(sway_ast::UseTree::Path {
+                    prefix: sway_types::BaseIdent::new_no_span("prelude".into()),
+                    double_colon_token: sway_ast::DoubleColonToken::default(),
+                    suffix: Box::new(sway_ast::UseTree::Glob {
+                        star_token: sway_ast::keywords::StarToken::new(sway_types::Span::dummy()),
+                    }),
+                }),
+            },
+            semicolon_token: sway_ast::keywords::SemicolonToken::new(sway_types::Span::dummy()),
+        }),
+    ];
+
+    let std_preludes = vec![
+        sway_ast::ItemKind::Use(sway_ast::ItemUse {
+            visibility: None,
+            use_token: sway_ast::keywords::UseToken::new(sway_types::Span::dummy()),
+            root_import: None,
+            tree: sway_ast::UseTree::Path {
+                prefix: sway_types::BaseIdent::new_no_span("core".into()),
+                double_colon_token: sway_ast::DoubleColonToken::default(),
+                suffix: Box::new(sway_ast::UseTree::Path {
+                    prefix: sway_types::BaseIdent::new_no_span("prelude".into()),
+                    double_colon_token: sway_ast::DoubleColonToken::default(),
+                    suffix: Box::new(sway_ast::UseTree::Glob {
+                        star_token: sway_ast::keywords::StarToken::new(sway_types::Span::dummy()),
+                    }),
+                }),
+            },
+            semicolon_token: sway_ast::keywords::SemicolonToken::new(sway_types::Span::dummy()),
+        }),
+        sway_ast::ItemKind::Use(sway_ast::ItemUse {
+            visibility: None,
+            use_token: sway_ast::keywords::UseToken::new(sway_types::Span::dummy()),
+            root_import: None,
+            tree: sway_ast::UseTree::Path {
+                prefix: sway_types::BaseIdent::new_no_span("std".into()),
+                double_colon_token: sway_ast::DoubleColonToken::default(),
+                suffix: Box::new(sway_ast::UseTree::Path {
+                    prefix: sway_types::BaseIdent::new_no_span("prelude".into()),
+                    double_colon_token: sway_ast::DoubleColonToken::default(),
+                    suffix: Box::new(sway_ast::UseTree::Glob {
+                        star_token: sway_ast::keywords::StarToken::new(sway_types::Span::dummy()),
+                    }),
+                }),
+            },
+            semicolon_token: sway_ast::keywords::SemicolonToken::new(sway_types::Span::dummy()),
+        }),
+    ];
+
     let ast_resolver = AstResolver {
         libraries: vec![
             AstLibrary {
                 name: "core".into(),
-                modules: parse_ast_modules("./sway/sway-lib-core/src", "./sway/sway-lib-core/src")?,
+                modules: parse_ast_modules("./sway/sway-lib-core/src", "./sway/sway-lib-core/src", core_preludes.as_slice())?,
             },
             AstLibrary {
                 name: "std".into(),
-                modules: parse_ast_modules("./sway/sway-lib-std/src", "./sway/sway-lib-std/src")?,
+                modules: parse_ast_modules("./sway/sway-lib-std/src", "./sway/sway-lib-std/src", std_preludes.as_slice())?,
             },
         ],
     };

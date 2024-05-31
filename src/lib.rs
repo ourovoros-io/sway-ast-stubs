@@ -12,6 +12,6 @@ mod test {
 
     #[test]
     fn test_default_resolver() {
-        let resolver = AstResolver::default();
+        let _ = AstResolver::default();
     }
 }
