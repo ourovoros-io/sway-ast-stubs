@@ -132,7 +132,7 @@ fn generate_module_code(module: &AstModule) -> TokenStream {
         .iter()
         .map(|x| generate_item_kind_code(x))
         .collect::<Vec<_>>();
-
+    
     quote!(AstModule {
         name: #name.into(),
         inner: sway_ast::Module {
@@ -534,7 +534,7 @@ fn generate_pattern_code(pattern: &sway_ast::Pattern) -> TokenStream {
                         value_separator_pairs: vec![#(#value_separator_pairs),*],
                         final_value_opt: #final_value_opt,
                     },
-                    span: sway_types::Span::dumy(),
+                    span: sway_types::Span::dummy(),
                 },
             })
         }
