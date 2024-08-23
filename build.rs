@@ -1069,6 +1069,75 @@ fn generate_item_abi_code(item: &sway_ast::ItemAbi) -> TokenStream {
     })
 }
 
+fn generate_storage_entry_code(entry: &sway_ast::StorageEntry) -> TokenStream {
+    let name = generate_base_ident_code(&entry.name);
+    // Option<Braces<Punctuated<Annotated<Box<StorageEntry>>, CommaToken>>>
+    let namespace = match &entry.namespace {
+        Some(br) => {
+            
+            let value_separator_pairs = br.inner.value_separator_pairs.iter().map(|x| {
+                let attribute_list = x.0.attribute_list.iter().map(|x| generate_attribute_decl_code(x)).collect::<Vec<_>>();
+                let value = generate_storage_entry_code(&x.0.value);
+        
+                quote!(
+                    (
+                        sway_ast::attribute::Annotated {
+                            attribute_list: vec![#(#attribute_list),*],
+                            value: #value,
+                        },
+                        sway_ast::keywords::CommaToken::new(sway_types::Span::dummy())
+                    )
+                )
+            }).collect::<Vec<_>>();
+
+            let final_value_opt = match br.inner.final_value_opt.as_ref() {
+                Some(f) => {
+                    let attribute_list = f.attribute_list.iter().map(|x| generate_attribute_decl_code(x)).collect::<Vec<_>>();
+                    let value = generate_storage_entry_code(&f.value);
+                    quote!(
+                        Some(Box::new(
+                            sway_ast::attribute::Annotated {
+                                attribute_list: vec![#(#attribute_list),*],
+                                value: Box::new(#value),
+                            },
+                        )
+                    ))
+                },
+                None => {
+                    quote!(None)
+                },
+            };
+
+            quote!(Some(sway_ast::Braces {
+                inner: sway_ast::Punctuated {
+                    value_separator_pairs: vec![#(#value_separator_pairs),*],
+                    final_value_opt: #final_value_opt,
+                },
+                span: sway_types::Span::dummy(),
+            }))
+        },
+        None => {
+            quote!(None)
+        },
+    };
+
+    let field = match &entry.field {
+        Some(field) => {
+            let field = generate_storage_field_code(field);
+            quote!(Some(#field))
+        },
+        None => {
+            quote!(None)
+        },
+    };
+
+    quote!(sway_ast::StorageEntry {
+        name: #name,
+        namespace: #namespace,
+        field: #field,
+    })
+}
+
 fn generate_storage_field_code(field: &sway_ast::StorageField) -> TokenStream {
     let name = generate_base_ident_code(&field.name);
     let ty = generate_ty_code(&field.ty);
@@ -1084,9 +1153,9 @@ fn generate_storage_field_code(field: &sway_ast::StorageField) -> TokenStream {
 }
 
 fn generate_item_storage_code(item: &sway_ast::ItemStorage) -> TokenStream {
-    let value_separator_pairs = item.fields.inner.value_separator_pairs.iter().map(|x| {
+    let value_separator_pairs = item.entries.inner.value_separator_pairs.iter().map(|x| {
         let attribute_list = x.0.attribute_list.iter().map(|x| generate_attribute_decl_code(x)).collect::<Vec<_>>();
-        let value = generate_storage_field_code(&x.0.value);
+        let value = generate_storage_entry_code(&x.0.value);
 
         quote!(
             (
@@ -1099,10 +1168,10 @@ fn generate_item_storage_code(item: &sway_ast::ItemStorage) -> TokenStream {
         )
     }).collect::<Vec<_>>();
 
-    let final_value_opt = match item.fields.inner.final_value_opt.as_ref() {
+    let final_value_opt = match item.entries.inner.final_value_opt.as_ref() {
         Some(x) => {
             let attribute_list = x.attribute_list.iter().map(|x| generate_attribute_decl_code(x)).collect::<Vec<_>>();
-            let value = generate_storage_field_code(&x.value);
+            let value = generate_storage_entry_code(&x.value);
     
             quote!(Some(Box::new(sway_ast::attribute::Annotated {
                 attribute_list: vec![#(#attribute_list),*],
@@ -1415,7 +1484,7 @@ fn generate_ty_code(ty: &sway_ast::Ty) -> TokenStream {
             let inner = generate_ty_code(ty.inner.as_ref());
 
             quote!(sway_ast::Ty::Slice {
-                slice_token: sway_ast::keywords::SliceToken::new(sway_types::Span::dummy()),
+                slice_token: Some(sway_ast::keywords::SliceToken::new(sway_types::Span::dummy())),
                 ty: sway_ast::brackets::SquareBrackets {
                     inner: Box::new(#inner),
                     span: sway_types::Span::dummy(),
