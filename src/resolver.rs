@@ -205,13 +205,18 @@ fn parse_ast_modules<P1: Clone + AsRef<std::path::Path>, P2: AsRef<std::path::Pa
             continue;
         }
 
-        let file = std::sync::Arc::<str>::from(std::fs::read_to_string(file_path.clone())?);
+        let file = std::fs::read_to_string(file_path.clone())?;
         let handler = sway_error::handler::Handler::default();
-        let mut module = sway_parse::parse_file(&handler, file.clone(), None).unwrap();
+        let mut module = sway_parse::parse_file(
+            &handler,
+            sway_types::span::Source::from(file.as_str()),
+            None,
+            sway_features::ExperimentalFeatures::default(),
+        ).unwrap();
 
         for prelude in preludes {
             module.value.items.push(sway_ast::attribute::Annotated {
-                attribute_list: vec![],
+                attributes: vec![],
                 value: prelude.clone(),
             });
         }
